@@ -1,10 +1,7 @@
 var x = 5;
-{
-    var j = 6;
-    {
-        var j = 7;
-        print j;
-    }
-    print j;
+var y = 2;
+if(y>x){
+    print "yay";
+}else{
+    print "boo";
 }
-print x;
