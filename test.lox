@@ -1,3 +1,12 @@
-for(var i = 0; i<100; i=i+1){
-    print i;
+for(var i = 1; i<=4; i=i+1){
+    switch(i){
+        case 1:
+            print "one";
+        case 2:
+            print "two";
+        case 3:
+            print "three";
+        default :
+            print "number";
+    }
 }

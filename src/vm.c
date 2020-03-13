@@ -116,6 +116,12 @@ static InterpretResult run() {
                 push(constant);
                 break;
             }
+            case OP_COMPARE: {
+                Value b = pop();
+                Value a = peek(0);
+                push(BOOL_VAL(valuesEqual(a,b)));
+                break;
+            }
             case OP_NIL:
                 push(NIL_VAL);
                 break;

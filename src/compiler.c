@@ -428,6 +428,44 @@ static void whileStatement(){
     emitByte(OP_POP);
 }
 
+static void switchStatement(){
+    int offsets[255];
+    int offsetIndex = 0;
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+    consume(TOKEN_LEFT_BRACE, "Expect '{' after switch expression.");
+    while(match(TOKEN_CASE)){
+        expression();
+        emitByte(OP_COMPARE);
+        int skipCase = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP);
+        consume(TOKEN_COLON, "Expect ':' after 'case'.");
+        while(!check(TOKEN_CASE) && !check(TOKEN_DEFAULT)){
+            statement();
+        }
+        if(offsetIndex > 255){
+            error("Too many cases in switch statement.");
+        }
+        offsets[offsetIndex] = emitJump(OP_JUMP);
+        offsetIndex++;
+        patchJump(skipCase);
+        emitByte(OP_POP);
+    }
+    if(match(TOKEN_DEFAULT)){
+        consume(TOKEN_COLON, "Expect ':' after 'default'.");
+        statement();
+    }
+
+    for(int i = 0; i<offsetIndex; i++){
+        patchJump(offsets[i]);
+    }
+
+    emitByte(OP_POP);
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch.");
+}
+
 static void synchronize(){
     parser.panicMode = false;
 
@@ -445,6 +483,7 @@ static void synchronize(){
             case TOKEN_WHILE:
             case TOKEN_PRINT:
             case TOKEN_RETURN:
+            case TOKEN_SWITCH:
                 return;
             default:
                 //do nothing
@@ -473,8 +512,10 @@ static void statement() {
         forStatement();
     }else if(match(TOKEN_IF)) {
         ifStatement();
-    }else if(match(TOKEN_WHILE)){
+    }else if(match(TOKEN_WHILE)) {
         whileStatement();
+    }else if(match(TOKEN_SWITCH)){
+        switchStatement();
     }else if(match(TOKEN_LEFT_BRACE)){
         beginScope();
         block();
