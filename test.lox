@@ -1,5 +1,3 @@
-var x = 0;
-while(x <= 10){
-    x = x + 1;
-    print x;
+for(var i = 0; i<100; i=i+1){
+    print i;
 }
