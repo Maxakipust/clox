@@ -55,29 +55,27 @@ bool tableGet(Table* table, ObjString* key, Value* value){
     return true;
 }
 
-static void adjustCapacity(Table* table, int capacity){
+static void adjustCapacity(Table* table, int capacity) {
     Entry* entries = ALLOCATE(Entry, capacity);
-    for(int i = 0; i<capacity; i++){
+    for (int i = 0; i < capacity; i++) {
         entries[i].key = NULL;
         entries[i].value = NIL_VAL;
     }
 
-    FREE_ARRAY(Entry, table->entries, table->capacity);
-    table->entries = entries;
-    table->capacity = capacity;
-
     table->count = 0;
-    for(int i = 0; i < table->capacity; i++){
+    for (int i = 0; i < table->capacity; i++) {
         Entry* entry = &table->entries[i];
-        if(entry->key == NULL){
-            continue;
-        }
+        if (entry->key == NULL) continue;
 
         Entry* dest = findEntry(entries, capacity, entry->key);
         dest->key = entry->key;
         dest->value = entry->value;
         table->count++;
     }
+
+    FREE_ARRAY(Entry, table->entries, table->capacity);
+    table->entries = entries;
+    table->capacity = capacity;
 }
 
 void freeTable(Table* table){
