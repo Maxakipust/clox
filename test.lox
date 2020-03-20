@@ -1,11 +1,10 @@
-fun t(){
-    print("t");
-}
-fun j(){
-    print("j");
+fun outer() {
+  var x = 1;    // (1)
+  x = 2;        // (2)
+  fun inner() { // (3)
+    print(x);
+  }
+  inner();
 }
 
-var k = 6;
-
-print("test");
-var start = clock();
+outer();
