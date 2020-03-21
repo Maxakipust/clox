@@ -23,6 +23,9 @@
 #define FREE_ARRAY(type, pointer, oldCount) reallocate(pointer, sizeof(type) * (oldCount) ,0)
 
 void* reallocate(void* previous, size_t oldSize, size_t newSize);
+void markObject(Obj* object);
+void markValue(Value value);
+void collectGarbage();
 void freeObjects();
 
 #endif //CLOX_MEMORY_H
