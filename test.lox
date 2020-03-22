@@ -14,6 +14,3 @@ class Cruller < Doughnut {
     super.finish("icing");
   }
 }
-
-var cruller = Cruller();
-cruller.cook();
