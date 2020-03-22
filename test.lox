@@ -1,13 +1,19 @@
-class Foo {
-  getClosure() {
-    fun closure() {
-      return this.toString();
-    }
-    return closure;
+class Doughnut {
+  cook() {
+    print("Dunk in the fryer.");
+    this.finish();
   }
 
-  toString() { return "Foo"; }
+  finish(ingredient) {
+    print("Finish with " + ingredient);
+  }
 }
 
-var closure = Foo().getClosure();
-print(closure()); // expect: Foo
+class Cruller < Doughnut {
+  finish() {
+    super.finish("icing");
+  }
+}
+
+var cruller = Cruller();
+cruller.cook();
