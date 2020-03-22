@@ -31,7 +31,8 @@ typedef enum {
     TOKEN_ERROR,
     TOKEN_EOF,
     //My tokens
-    TOKEN_COLON, TOKEN_SWITCH, TOKEN_CASE, TOKEN_DEFAULT
+    TOKEN_COLON, TOKEN_SWITCH, TOKEN_CASE, TOKEN_DEFAULT, TOKEN_CONTINUE,
+    TOKEN_BREAK,
 } TokenType;
 
 typedef struct {

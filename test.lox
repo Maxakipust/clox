@@ -1,16 +1,14 @@
-class Doughnut {
-  cook() {
-    print("Dunk in the fryer.");
-    this.finish();
-  }
-
-  finish(ingredient) {
-    print("Finish with " + ingredient);
-  }
+fun br(){
+    break;
 }
-
-class Cruller < Doughnut {
-  finish() {
-    super.finish("icing");
-  }
+var i = 0;
+switch(i){
+    case 1:
+        print("1");
+        br();
+        print("1");
+    case 0:
+        print("0");
+        br();
+        print("0");
 }

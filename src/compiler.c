@@ -14,6 +14,8 @@
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
 #endif
+#define MAX_CASES 255
+#define MAX_BREAKS 255
 
 typedef struct {
     Token current;
@@ -22,6 +24,11 @@ typedef struct {
     bool panicMode;
 } Parser;
 
+typedef enum{
+    SS_BEFORE_CASES,
+    SS_BEFORE_DEFAULT,
+    SS_AFTER_DEFAULT,
+} SwitchState;
 
 typedef enum{
     PREC_NONE,
@@ -87,6 +94,13 @@ ClassCompiler* currentClass = NULL;
 Compiler* current = NULL;
 
 Chunk* compilingChunk;
+
+int innermostLoopStart = -1;
+int innermostLoopScopeDepth = 0;
+
+int breakJumps[MAX_BREAKS];
+int breakIndex = 0;
+int breakDepth = 0;
 
 static Chunk* currentChunk() {
     return &current->function->chunk;
@@ -271,6 +285,14 @@ static void endScope() {
     }
 }
 
+static void patchBreaks(){
+    for(int i = 0; i<breakIndex; i++){
+        patchJump(breakJumps[i]);
+    }
+    breakIndex = 0;
+    breakDepth--;
+}
+
 static void expression();
 static void statement();
 static void declaration();
@@ -431,8 +453,6 @@ static void expression() {
     parsePrecedence(PREC_ASSIGNMENT);
 }
 
-//TODO:i can put breaks in here so they will apply to everything
-//ill need to change switches to expect a statement
 static void block() {
     while(!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)){
         declaration();
@@ -566,8 +586,11 @@ static void forStatement() {
     }else{
         expression();
     }
-
-    int loopStart = currentChunk()->count;
+    int surroundingLoopStart = innermostLoopStart;
+    int surroundingLoopDepth = innermostLoopScopeDepth;
+    innermostLoopStart = currentChunk()->count;
+    innermostLoopScopeDepth = current->scopeDepth;
+    breakDepth++;
 
     int exitJump = -1;
     if(!match(TOKEN_SEMICOLON)) {
@@ -586,19 +609,24 @@ static void forStatement() {
         emitByte(OP_POP);
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
-        emitLoop(loopStart);
-        loopStart = incrementStart;
+        emitLoop(innermostLoopStart);
+        innermostLoopStart = incrementStart;
         patchJump(bodyJump);
     }
 
     statement();
 
-    emitLoop(loopStart);
+    emitLoop(innermostLoopStart);
 
     if(exitJump != -1){
         patchJump(exitJump);
         emitByte(OP_POP);
     }
+
+    patchBreaks();
+
+    innermostLoopStart = surroundingLoopStart;
+    innermostLoopScopeDepth = surroundingLoopDepth;
 
     endScope();
 }
@@ -641,7 +669,11 @@ static void returnStatement(){
 }
 
 static void whileStatement(){
-    int loopStart = currentChunk()->count;
+    int surroundingLoopStart = innermostLoopStart;
+    int surroundingLoopScopeDepth = innermostLoopScopeDepth;
+    innermostLoopStart = currentChunk()->count;
+    innermostLoopScopeDepth = current->scopeDepth;
+    breakDepth++;
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     expression();
@@ -652,48 +684,77 @@ static void whileStatement(){
     emitByte(OP_POP);
     statement();
 
-    emitLoop(loopStart);
+    emitLoop(innermostLoopStart);
+    patchBreaks();
 
     patchJump(exitJump);
     emitByte(OP_POP);
+
+    innermostLoopStart = surroundingLoopStart;
+    innermostLoopScopeDepth = surroundingLoopScopeDepth;
 }
 
 static void switchStatement(){
-    int offsets[255];
-    int offsetIndex = 0;
-
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
-    consume(TOKEN_LEFT_BRACE, "Expect '{' after switch expression.");
-    while(match(TOKEN_CASE) && !check(TOKEN_EOF)){
-        expression();
-        emitByte(OP_COMPARE);
-        int skipCase = emitJump(OP_JUMP_IF_FALSE);
-        emitByte(OP_POP);
-        consume(TOKEN_COLON, "Expect ':' after 'case'.");
-        while(!check(TOKEN_CASE) && !check(TOKEN_DEFAULT) && !check(TOKEN_EOF)){
-            statement();
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before switch cases.");
+    beginScope();
+    SwitchState state = SS_BEFORE_CASES;
+    int caseEnds[MAX_CASES];
+    int caseCount = 0;
+    int previousCaseSkip = -1;
+
+    while(!match(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)){
+        if(match(TOKEN_CASE) || match(TOKEN_DEFAULT)){
+            TokenType type = parser.previous.type;
+            if(state == SS_AFTER_DEFAULT){
+                error("The default case must be the last case");
+            }
+            if(state == SS_BEFORE_DEFAULT){
+                caseEnds[caseCount++]=emitJump(OP_JUMP);
+
+                patchJump(previousCaseSkip);
+                emitByte(OP_POP);
+            }
+
+            patchBreaks();
+            breakDepth++;
+
+            if(type == TOKEN_CASE){
+                state = SS_BEFORE_DEFAULT;
+
+                expression();
+                consume(TOKEN_COLON, "Expect ';' after case value.");
+                emitByte(OP_COMPARE);
+                previousCaseSkip = emitJump(OP_JUMP_IF_FALSE);
+
+                emitByte(OP_POP);
+            } else if (type == TOKEN_DEFAULT){
+                state = SS_AFTER_DEFAULT;
+                consume(TOKEN_COLON, "Expect ':' after default.");
+                previousCaseSkip = -1;
+            }
+        }else{
+            if(state==SS_BEFORE_CASES){
+                error("Cannot have statements before any case.");
+            }
+            declaration();
         }
-        if(offsetIndex > 255){
-            error("Too many cases in switch statement.");
-        }
-        offsets[offsetIndex] = emitJump(OP_JUMP);
-        offsetIndex++;
-        patchJump(skipCase);
-        emitByte(OP_POP);
-    }
-    if(match(TOKEN_DEFAULT)){
-        consume(TOKEN_COLON, "Expect ':' after 'default'.");
-        statement();
     }
 
-    for(int i = 0; i<offsetIndex; i++){
-        patchJump(offsets[i]);
+    if(state == SS_BEFORE_DEFAULT){
+        patchJump(previousCaseSkip);
+        emitByte(OP_POP);
+    }
+
+    for(int i = 0; i<caseCount; i++){
+        patchJump(caseEnds[i]);
     }
 
     emitByte(OP_POP);
-    consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch.");
+    patchBreaks();
+    endScope();
 }
 
 static void synchronize(){
@@ -738,6 +799,33 @@ static void declaration() {
     }
 }
 
+static void continueStatement() {
+    if (innermostLoopStart == -1) {
+        error("Cannot use 'continue' outside of a loop");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+    for(int i = current->localCount -1; i>= 0 && current->locals[i].depth>innermostLoopScopeDepth; i--){
+        emitByte(OP_POP);
+    }
+
+    emitLoop(innermostLoopStart);
+}
+
+static void breakStatement() {
+    if(breakDepth>0){
+        consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+        for(int i = current->localCount -1; i>= 0 && current->locals[i].depth>innermostLoopScopeDepth; i--){
+            emitByte(OP_POP);
+        }
+        breakJumps[breakIndex] = emitJump(OP_JUMP);
+        breakIndex++;
+    }else{
+        errorAt(&parser.previous, "'break'can only be used in 'for', 'while', or 'switch' statements");
+    }
+}
+
 static void statement() {
     if(match(TOKEN_FOR)) {
         forStatement();
@@ -747,8 +835,12 @@ static void statement() {
         returnStatement();
     }else if(match(TOKEN_WHILE)) {
         whileStatement();
-    }else if(match(TOKEN_SWITCH)){
+    }else if(match(TOKEN_SWITCH)) {
         switchStatement();
+    }else if(match(TOKEN_CONTINUE)) {
+        continueStatement();
+    }else if(match(TOKEN_BREAK)){
+        breakStatement();
     }else if(match(TOKEN_LEFT_BRACE)){
         beginScope();
         block();
@@ -1030,6 +1122,7 @@ ObjFunction* compile(const char* source){
         declaration();
     }
 
+    patchBreaks();
     ObjFunction* function = endCompiler();
     return parser.hadError ? NULL : function;
 }
