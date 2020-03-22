@@ -1,9 +1,7 @@
-fun mult(first,second){
-    var result = 0;
-    for(var i = 0; i<second; i=i+1){
-        result = result + first;
-    }
-    return result;
-}
+class Pair {}
 
-print(mult(3,2));
+var pair = Pair();
+pair.first = 1;
+pair.second = 2;
+print(pair.first + pair.second); // 3.
+print(pair.nope);
