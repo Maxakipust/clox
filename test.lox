@@ -1,7 +1,13 @@
-class Pair {}
+class Foo {
+  getClosure() {
+    fun closure() {
+      return this.toString();
+    }
+    return closure;
+  }
 
-var pair = Pair();
-pair.first = 1;
-pair.second = 2;
-print(pair.first + pair.second); // 3.
-print(pair.nope);
+  toString() { return "Foo"; }
+}
+
+var closure = Foo().getClosure();
+print(closure()); // expect: Foo
