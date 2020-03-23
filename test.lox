@@ -1,12 +1,35 @@
-
-var i = 2;
-switch(i){
-    case 1:
-        var scale = 1;
-        print(scale*i);
-    case 0:
-        print(scale*i);
-    default:
-        var scale = 2;
-        print(scale*i);
+fun main(i, condition){
+    switch(i){
+        case 0:
+            if(condition){
+                print("0 condition");
+                break;
+            }
+            print("0");
+        case 1:
+            if(condition){
+                print("1 condition");
+                break;
+            }
+            print("1");
+        case 2:
+            if(condition){
+                print("2 condition");
+                break;
+            }
+            print("2");
+        default:
+            if(condition){
+                print("default condition");
+                break;
+            }
+            print("default");
+    }
+}
+//main(0, true);
+var i = 0;
+while(i<=3){
+    main(i, true);
+    main(i, false);
+    i=i+1;
 }

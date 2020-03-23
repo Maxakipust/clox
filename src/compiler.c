@@ -713,10 +713,11 @@ static void switchStatement(){
                 error("The default case must be the last case");
             }
             if(state == SS_BEFORE_DEFAULT){
-                caseEnds[caseCount++]=emitJump(OP_JUMP);
                 endScope();
                 patchBreaks();
                 onCase = true;
+
+                caseEnds[caseCount++]=emitJump(OP_JUMP);
 
                 patchJump(previousCaseSkip);
                 emitByte(OP_POP);
