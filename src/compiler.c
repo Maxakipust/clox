@@ -704,6 +704,7 @@ static void switchStatement(){
     int caseEnds[MAX_CASES];
     int caseCount = 0;
     int previousCaseSkip = -1;
+    bool onCase = true;
 
     while(!match(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)){
         if(match(TOKEN_CASE) || match(TOKEN_DEFAULT)){
@@ -713,13 +714,13 @@ static void switchStatement(){
             }
             if(state == SS_BEFORE_DEFAULT){
                 caseEnds[caseCount++]=emitJump(OP_JUMP);
+                endScope();
+                patchBreaks();
+                onCase = true;
 
                 patchJump(previousCaseSkip);
                 emitByte(OP_POP);
             }
-
-            patchBreaks();
-            breakDepth++;
 
             if(type == TOKEN_CASE){
                 state = SS_BEFORE_DEFAULT;
@@ -739,7 +740,12 @@ static void switchStatement(){
             if(state==SS_BEFORE_CASES){
                 error("Cannot have statements before any case.");
             }
+            if(onCase){
+                beginScope();
+                breakDepth++;
+            }
             declaration();
+            onCase = false;
         }
     }
 
@@ -754,7 +760,6 @@ static void switchStatement(){
 
     emitByte(OP_POP);
     patchBreaks();
-    endScope();
 }
 
 static void synchronize(){

@@ -1,14 +1,12 @@
-fun br(){
-    break;
-}
-var i = 0;
+
+var i = 2;
 switch(i){
     case 1:
-        print("1");
-        br();
-        print("1");
+        var scale = 1;
+        print(scale*i);
     case 0:
-        print("0");
-        br();
-        print("0");
+        print(scale*i);
+    default:
+        var scale = 2;
+        print(scale*i);
 }
