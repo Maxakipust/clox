@@ -164,7 +164,7 @@ static bool callValue(Value callee, int argCount){
         }
     }
 
-    runtimeError("Can only call functions and classes");
+    runtimeError("Can only call functions and classes.");
     return false;
 }
 
@@ -436,7 +436,7 @@ static InterpretResult run() {
                     double a = AS_NUMBER(pop());
                     push(NUMBER_VAL(a + b));
                 } else {
-                    runtimeError("Operands bust be two numbers or two strings.");
+                    runtimeError("Operands must be two numbers or two strings.");
                     return INTERPRET_RUNTIME_ERROR;
                 }
                 break;

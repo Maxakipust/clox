@@ -1,35 +1,11 @@
-fun main(i, condition){
-    switch(i){
-        case 0:
-            if(condition){
-                print("0 condition");
-                break;
-            }
-            print("0");
-        case 1:
-            if(condition){
-                print("1 condition");
-                break;
-            }
-            print("1");
-        case 2:
-            if(condition){
-                print("2 condition");
-                break;
-            }
-            print("2");
-        default:
-            if(condition){
-                print("default condition");
-                break;
-            }
-            print("default");
-    }
+fun makeClosure(value) {
+  fun closure() {
+    print(value);
+  }
+  return closure;
 }
-//main(0, true);
-var i = 0;
-while(i<=3){
-    main(i, true);
-    main(i, false);
-    i=i+1;
-}
+
+var doughnut = makeClosure("doughnut");
+var bagel = makeClosure("bagel");
+doughnut();
+bagel();

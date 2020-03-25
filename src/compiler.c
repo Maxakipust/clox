@@ -114,7 +114,7 @@ static void errorAt(Token* token, const char* message) {
     fprintf(stderr, "[line %d] Error", token->line);
 
     if(token->type == TOKEN_EOF){
-        fprintf(stderr, "at end");
+        fprintf(stderr, " at end");
     }else if(token->type == TOKEN_ERROR) {
         //nothing
     }else{
@@ -481,7 +481,7 @@ static void function(FunctionType type){
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
 
-    consume(TOKEN_LEFT_BRACE, "Expect '{' before function body");
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
     block();
 
     ObjFunction *function = endCompiler();
@@ -524,7 +524,7 @@ static void classDeclaration() {
         consume(TOKEN_IDENTIFIER, "Expect superclass name.");
         variable(false);
         if(identifiersEqual(&className, &parser.previous)){
-            error("A class cannot inherit from itself");
+            error("A class cannot inherit from itself.");
         }
 
         beginScope();
@@ -584,7 +584,7 @@ static void forStatement() {
     }else if (match(TOKEN_VAR)){
         varDeclaration();
     }else{
-        expression();
+        expressionStatement();
     }
     int surroundingLoopStart = innermostLoopStart;
     int surroundingLoopDepth = innermostLoopScopeDepth;
@@ -998,7 +998,7 @@ static void super_(bool canAssign) {
     if(currentClass == NULL){
         error("Cannot use 'super' outside of a class.");
     }else if(!currentClass->hasSuperclass){
-        error("Cannot user 'super' in a class with no superclass");
+        error("Cannot use 'super' in a class with no superclass.");
     }
 
     consume(TOKEN_DOT, "Expect '.' after 'super'.");
@@ -1045,38 +1045,38 @@ static void unary(bool canAssign) {
 ParseRule rules[] = {
         { grouping, call,    PREC_CALL },       // TOKEN_LEFT_PAREN
         { NULL,     NULL,    PREC_NONE },       // TOKEN_RIGHT_PAREN
-        { NULL,     NULL,    PREC_NONE },      // TOKEN_LEFT_BRACE
+        { NULL,     NULL,    PREC_NONE },       // TOKEN_LEFT_BRACE
         { NULL,     NULL,    PREC_NONE },       // TOKEN_RIGHT_BRACE
         { NULL,     NULL,    PREC_NONE },       // TOKEN_COMMA
-        { NULL,     dot,    PREC_CALL },       // TOKEN_DOT
+        { NULL,     dot,     PREC_CALL },       // TOKEN_DOT
         { unary,    binary,  PREC_TERM },       // TOKEN_MINUS
         { NULL,     binary,  PREC_TERM },       // TOKEN_PLUS
         { NULL,     NULL,    PREC_NONE },       // TOKEN_SEMICOLON
         { NULL,     binary,  PREC_FACTOR },     // TOKEN_SLASH
         { NULL,     binary,  PREC_FACTOR },     // TOKEN_STAR
-        { unary,     NULL,    PREC_NONE },       // TOKEN_BANG
-        { NULL,     binary,    PREC_EQUALITY },       // TOKEN_BANG_EQUAL
+        { unary,    NULL,    PREC_NONE },       // TOKEN_BANG
+        { NULL,     binary,  PREC_EQUALITY },   // TOKEN_BANG_EQUAL
         { NULL,     NULL,    PREC_NONE },       // TOKEN_EQUAL
-        { NULL,     binary,    PREC_EQUALITY },       // TOKEN_EQUAL_EQUAL
-        { NULL,     binary,    PREC_COMPARISON },       // TOKEN_GREATER
-        { NULL,     binary,    PREC_COMPARISON },       // TOKEN_GREATER_EQUAL
-        { NULL,     binary,    PREC_COMPARISON },       // TOKEN_LESS
-        { NULL,     binary,    PREC_COMPARISON },       // TOKEN_LESS_EQUAL
-        { variable,     NULL,    PREC_NONE },       // TOKEN_IDENTIFIER
-        { string,     NULL,    PREC_NONE },       // TOKEN_STRING
+        { NULL,     binary,  PREC_EQUALITY },   // TOKEN_EQUAL_EQUAL
+        { NULL,     binary,  PREC_COMPARISON }, // TOKEN_GREATER
+        { NULL,     binary,  PREC_COMPARISON }, // TOKEN_GREATER_EQUAL
+        { NULL,     binary,  PREC_COMPARISON }, // TOKEN_LESS
+        { NULL,     binary,  PREC_COMPARISON }, // TOKEN_LESS_EQUAL
+        { variable, NULL,    PREC_NONE },       // TOKEN_IDENTIFIER
+        { string,   NULL,    PREC_NONE },       // TOKEN_STRING
         { number,   NULL,    PREC_NONE },       // TOKEN_NUMBER
-        { NULL,     and_,    PREC_AND },       // TOKEN_AND
+        { NULL,     and_,    PREC_AND },        // TOKEN_AND
         { NULL,     NULL,    PREC_NONE },       // TOKEN_CLASS
         { NULL,     NULL,    PREC_NONE },       // TOKEN_ELSE
         { literal,  NULL,    PREC_NONE },       // TOKEN_FALSE
         { NULL,     NULL,    PREC_NONE },       // TOKEN_FOR
         { NULL,     NULL,    PREC_NONE },       // TOKEN_FUN
         { NULL,     NULL,    PREC_NONE },       // TOKEN_IF
-        { literal,     NULL,    PREC_NONE },       // TOKEN_NIL
-        { NULL,     or_,    PREC_NONE },       // TOKEN_OR
+        { literal,  NULL,    PREC_NONE },       // TOKEN_NIL
+        { NULL,     or_,     PREC_OR },         // TOKEN_OR
         { NULL,     NULL,    PREC_NONE },       // TOKEN_RETURN
-        { super_,     NULL,    PREC_NONE },       // TOKEN_SUPER
-        { this_,     NULL,    PREC_NONE },       // TOKEN_THIS
+        { super_,   NULL,    PREC_NONE },       // TOKEN_SUPER
+        { this_,    NULL,    PREC_NONE },       // TOKEN_THIS
         { literal,  NULL,    PREC_NONE },       // TOKEN_TRUE
         { NULL,     NULL,    PREC_NONE },       // TOKEN_VAR
         { NULL,     NULL,    PREC_NONE },       // TOKEN_WHILE
@@ -1092,7 +1092,7 @@ static void parsePrecedence(Precedence precedence){
     advance();
     ParseFn prefixRule = getRule(parser.previous.type)->prefix;
     if(prefixRule == NULL){
-        error("Expect expression");
+        error("Expect expression.");
         return;
     }
 
@@ -1106,7 +1106,7 @@ static void parsePrecedence(Precedence precedence){
     }
 
     if(canAssign && match(TOKEN_EQUAL)){
-        error("Invalid assignment target");
+        error("Invalid assignment target.");
     }
 }
 
