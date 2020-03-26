@@ -199,8 +199,10 @@ static bool invoke(ObjString* name, int argCount){
 static bool bindMethod(ObjClass* klass, ObjString* name){
     Value method;
     if(!tableGet(&klass->methods, name, &method)){
-        runtimeError("Undefined property '%s'.", name->chars);
-        return false;
+        //runtimeError("Undefined property '%s'.", name->chars);
+        pop();
+        push(NIL_VAL);
+        return true;
     }
 
     ObjBoundMethod* bound = newBoundMethod(peek(0), AS_CLOSURE(method));
@@ -344,9 +346,6 @@ static InterpretResult run() {
                     pop();
                     push(value);
                     break;
-                }else{
-                    pop();
-                    push(NIL_VAL);
                 }
                 if(!bindMethod(instance->klass, name)){
                     return INTERPRET_RUNTIME_ERROR;
