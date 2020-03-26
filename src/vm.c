@@ -220,6 +220,10 @@ static ObjUpvalue *captureUpvalue(Value *local) {
         upvalue = upvalue->next;
     }
 
+    if(upvalue != NULL && upvalue->location == local){
+        return upvalue;
+    }
+
     ObjUpvalue *createdUpvalue = newUpvalue(local);
     createdUpvalue->next = upvalue;
 
