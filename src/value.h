@@ -7,6 +7,8 @@
 
 #include "common.h"
 
+#include <stdio.h>
+
 typedef struct sObj Obj;
 typedef struct sObjString ObjString;
 
@@ -50,6 +52,6 @@ bool valuesEqual(Value a, Value b);
 void initValueArray(ValueArray* array);
 void writeValueArray(ValueArray* array, Value value);
 void freeValueArray(ValueArray* array);
-void printValue(Value value);
+void printValue(Value value, FILE* location);
 
 #endif //CLOX_VALUE_H

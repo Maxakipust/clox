@@ -92,7 +92,7 @@ void markObject(Obj* object){
     }
 #ifdef DEBUG_LOG_GC
     printf("%p mark ", (void*)object);
-    printValue(OBJ_VAL(object));
+    printValue(OBJ_VAL(object), stdout);
     printf("\n");
 #endif
 
@@ -123,10 +123,9 @@ static void markArray(ValueArray* array) {
 static void blackenObject(Obj* object){
 #ifdef DEBUG_LOG_GC
     printf("%p blacken ", (void*)object);
-    printValue(OBJ_VAL(object));
+    printValue(OBJ_VAL(object), stdout);
     printf("\n");
 #endif
-
     switch (object->type){
         case OBJ_BOUND_METHOD:{
             ObjBoundMethod* bound = (ObjBoundMethod*)object;

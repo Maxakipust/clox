@@ -31,19 +31,19 @@ void freeValueArray(ValueArray* array){
     initValueArray(array);
 }
 
-void printValue(Value value){
+void printValue(Value value, FILE* location){
     switch (value.type){
         case VAL_BOOL:
-            printf(AS_BOOL(value) ? "true" : "false");
+            fprintf(location, AS_BOOL(value) ? "true" : "false");
             break;
         case VAL_NIL:
-            printf("nil");
+            fprintf(location, "nil");
             break;
         case VAL_NUMBER:
-            printf("%g", AS_NUMBER(value));
+            fprintf(location, "%g", AS_NUMBER(value));
             break;
         case VAL_OBJ:
-            printObject(value);
+            printObject(value, location);
             break;
     }
 }

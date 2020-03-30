@@ -110,7 +110,7 @@ ObjNative *newNative(NativeFn function);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);
-void printObject(Value value);
+void printObject(Value value, FILE* location);
 static inline bool isObjType(Value value, ObjType type) {
     return IS_OBJ(value) && (AS_OBJ(value)->type == type);
 }

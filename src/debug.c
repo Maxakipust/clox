@@ -18,18 +18,37 @@ void disassembleChunk(Chunk* chunk, const char* name){
 static int constantInstruction(const char* name, Chunk* chunk, int offset){
     uint8_t constant = chunk->code[offset+1];
     printf("%-16s %4d '", name, constant);
-    printValue(chunk->constants.values[constant]);
+    printValue(chunk->constants.values[constant], stdout);
     printf("'\n");
     return offset+2;
+}
+
+static int constantInstructionShort(const char* name, Chunk* chunk, int offset){
+    uint16_t constant =  (uint16_t)(chunk->code[offset + 1] << 8);
+    constant |= chunk->code[offset+2];
+    printf("%-16s %4d '", name, constant);
+    printValue(chunk->constants.values[constant], stdout);
+    printf("'\n");
+    return offset+3;
 }
 
 static int invokeInstruction(const char* name, Chunk* chunk, int offset){
     uint8_t constant = chunk->code[offset + 1];
     uint8_t argCount = chunk->code[offset + 2];
     printf("%-16s (%d args) %4d '", name, argCount, constant);
-    printValue(chunk->constants.values[constant]);
+    printValue(chunk->constants.values[constant], stdout);
     printf("'\n");
     return offset + 3;
+}
+
+static int invokeInstructionShort(const char* name, Chunk* chunk, int offset){
+    uint16_t constant = (uint16_t)(chunk->code[offset + 1] << 8);
+    constant |= chunk->code[offset+2];
+    uint8_t argCount = chunk->code[offset + 3];
+    printf("%-16s (%d args) %4d '", name, argCount, constant);
+    printValue(chunk->constants.values[constant], stdout);
+    printf("'\n");
+    return offset + 4;
 }
 
 static int simpleInstruction(const char* name, int offset) {
@@ -48,6 +67,13 @@ static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset)
     jump |= chunk->code[offset+2];
     printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
     return offset+3;
+}
+
+static int shortInstruction(const char* name, Chunk* chunk, int offset){
+    uint16_t arg = (uint16_t)(chunk->code[offset + 1] << 8);
+    arg |= chunk->code[offset+2];
+    printf("%-16s %4d\n", name, arg);
+    return offset +3;
 }
 
 int disassembleInstruction(Chunk* chunk, int offset) {
@@ -129,7 +155,7 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             offset++;
             uint8_t constant = chunk->code[offset++];
             printf("%-16s %4d ", "OP_CLOSURE", constant);
-            printValue(chunk->constants.values[constant]);
+            printValue(chunk->constants.values[constant], stdout);
             printf("\n");
 
             ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
@@ -148,6 +174,66 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             return simpleInstruction("OP_INHERIT", offset);
         case OP_METHOD:
             return constantInstruction("OP_METHOD", chunk, offset);
+        case OP_METHOD_16:
+            return constantInstructionShort("OP_METHOD_16", chunk, offset);
+        case OP_CONSTANT_16:
+            return constantInstructionShort("OP_CONSTANT_16", chunk, offset);
+        case OP_CLOSURE_16:{
+            offset++;
+            uint16_t constant = (uint16_t)((chunk->code[offset] << 8) | chunk->code[offset +1]);
+            offset += 2;
+            printf("%-16s %4d ", "OP_CLOSURE_16", constant);
+            printValue(chunk->constants.values[constant], stdout);
+            printf("\n");
+
+            ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
+            for (int j = 0; j < function->upvalueCount; j++) {
+                int isLocal = chunk->code[offset++];
+                int index = chunk->code[offset++];
+                printf("%04d      |                     %s %d\n", offset - 2, isLocal ? "local" : "upvalue", index);
+            }
+            return offset;
+        }
+        case OP_GET_LOCAL_16:{
+            return shortInstruction("OP_GET_LOCAL_16", chunk, offset);
+        }
+        case OP_SET_LOCAL_16:{
+            return shortInstruction("OP_SET_LOCAL_16", chunk, offset);
+        }
+        case OP_GET_UPVALUE_16:{
+            return shortInstruction("OP_GET_UPVALUE_16", chunk, offset);
+        }
+        case OP_SET_UPVALUE_16:{
+            return shortInstruction("OP_SET_UPVALUE_16", chunk, offset);
+        }
+        case OP_GET_GLOBAL_16:{
+            return constantInstructionShort("OP_GET_GLOBAL_16", chunk, offset);
+        }
+        case OP_SET_GLOBAL_16:{
+            return constantInstructionShort("OP_SET_GLOBAL_16", chunk, offset);
+        }
+        case OP_CLASS_16:{
+            return constantInstructionShort("OP_CLASS_16", chunk, offset);
+        }
+        case OP_DEFINE_GLOBAL_16:{
+            return constantInstructionShort("OP_DEFINE_GLOBAL_16", chunk, offset);
+        }
+        case OP_SET_PROPERTY_16:{
+            return constantInstructionShort("OP_SET_PROPERTY_16", chunk, offset);
+        }
+        case OP_INVOKE_16:{
+            return invokeInstructionShort("OP_INVOKE_16", chunk, offset);
+        }
+        case OP_GET_PROPERTY_16:{
+            return constantInstructionShort("OP_GET_PROPERTY_16", chunk, offset);
+        }
+        case OP_GET_SUPER_16:{
+            return constantInstructionShort("OP_GET_SUPER_16", chunk, offset);
+        }
+        case OP_SUPER_INVOKE_16:{
+            return invokeInstructionShort("OP_SUPER_INVOKE", chunk, offset);
+        }
+
         default:
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;

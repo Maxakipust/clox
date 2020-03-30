@@ -25,11 +25,42 @@ static Value clockNative(int argCount, Value* args){
 static Value printNative(int argCount, Value* args){
     for(int i = 0; i<argCount; i++){
         Value value = args[i];
-        printValue(value);
+        printValue(value, stdout);
+    }
+}
+
+static Value printlnNative(int argCount, Value* args){
+    for(int i= 0; i<argCount; i++){
+        Value value = args[i];
+        printValue(value, stdout);
         printf("\n");
     }
 }
 
+static Value getcNative(int argCount, Value* args){
+    return NUMBER_VAL(getchar());
+}
+static Value chrNative(int argCount, Value* args){
+    char arg = AS_NUMBER(args[0]);
+    return OBJ_VAL(copyString(&arg, (int)strlen(&arg)));
+}
+static Value exitNative(int argCount, Value* args){
+    char arg = AS_NUMBER(args[0]);
+    return OBJ_VAL(copyString(&arg, (int)strlen(&arg)));
+}
+static Value printErrLnNative(int argCount, Value* args){
+    for(int i= 0; i<argCount; i++){
+        Value value = args[i];
+        printValue(value, stderr);
+        fprintf(stderr,"\n");
+    }
+}
+static Value printErrNative(int argCount, Value* args){
+    for(int i= 0; i<argCount; i++){
+        Value value = args[i];
+        printValue(value, stderr);
+    }
+}
 static void resetStack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
@@ -86,7 +117,13 @@ void initVM() {
     vm.initString = copyString("init", 4);
 
     defineNative("print", printNative);
+    defineNative("println", printlnNative);
     defineNative("clock", clockNative);
+    defineNative("getc", getcNative);
+    defineNative("chr", chrNative);
+    defineNative("exit", exitNative);
+    defineNative("print_error", printErrNative);
+    defineNative("print_errorln", printErrLnNative);
 }
 
 void freeVM() {
@@ -275,10 +312,13 @@ static void concatenate() {
 static InterpretResult run() {
     CallFrame* frame = &vm.frames[vm.frameCount-1];
 
-#define READ_BYTE() (*frame->ip++)
-#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
+
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_STRING() AS_STRING(READ_CONSTANT())
+#define READ_STRING_16() AS_STRING(READ_CONSTANT_16())
+#define READ_BYTE() (*frame->ip++)
+#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT_16() (frame->closure->function->chunk.constants.values[READ_SHORT()])
 
 #define BINARY_OP(valueType, op) \
     do {\
@@ -290,13 +330,15 @@ static InterpretResult run() {
         double a = AS_NUMBER(pop()); \
         push(valueType(a op b)); \
     } while (false)
+    int test = 0;
 
     while (true) {
+        test++;
 #ifdef DEBUG_TRACE_EXECUTION
         printf("          ");
         for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
             printf("[ ");
-            printValue(*slot);
+            printValue(*slot, stdout);
             printf(" ]");
         }
         printf("\n");
@@ -562,6 +604,140 @@ static InterpretResult run() {
                 defineMethod(READ_STRING());
                 break;
             }
+            case OP_METHOD_16:{
+                defineMethod(READ_STRING_16());
+                break;
+            }
+            case OP_CONSTANT_16:{
+                Value constant = READ_CONSTANT_16();
+                push(constant);
+                break;
+            }
+            case OP_CLOSURE_16:{
+                ObjFunction *function = AS_FUNCTION(READ_CONSTANT_16());
+                ObjClosure *closure = newClosure(function);
+                push(OBJ_VAL(closure));
+                for (int i = 0; i < closure->upvalueCount; i++) {
+                    uint8_t isLocal = READ_BYTE();
+                    uint8_t index = READ_BYTE();
+                    if (isLocal) {
+                        closure->upvalues[i] = captureUpvalue(frame->slots + index);
+                    } else {
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    }
+                }
+                break;
+            }
+            case OP_GET_LOCAL_16:{
+                uint16_t slot = READ_SHORT();
+                push(frame->slots[slot]);
+                break;
+            }
+            case OP_SET_LOCAL_16: {
+                uint16_t slot = READ_SHORT();
+                frame->slots[slot] = peek(0);
+                break;
+            }
+            case OP_GET_UPVALUE_16: {
+                uint16_t slot = READ_SHORT();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE_16:{
+                uint16_t slot = READ_SHORT();
+                *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
+            case OP_GET_GLOBAL_16:{
+                ObjString *name = READ_STRING_16();
+                Value value;
+                if (!tableGet(&vm.globals, name, &value)) {
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(value);
+                break;
+            }
+            case OP_SET_GLOBAL_16:{
+                ObjString *name = READ_STRING_16();
+                if (tableSet(&vm.globals, name, peek(0))) {
+                    tableDelete(&vm.globals, name);
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case OP_CLASS_16:{
+                push(OBJ_VAL(newClass(READ_STRING_16())));
+                break;
+            }
+            case OP_DEFINE_GLOBAL_16:{
+                ObjString *name = READ_STRING_16();
+                tableSet(&vm.globals, name, peek(0));
+                pop();
+                break;
+            }
+            case OP_SET_PROPERTY_16:{
+                if(!IS_INSTANCE(peek(1))){
+                    runtimeError("Only instances have fields.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                ObjInstance* instance = AS_INSTANCE(peek(1));
+                tableSet(&instance->fields, READ_STRING_16(), peek(0));
+
+                Value value = pop();
+                pop();
+                push(value);
+                break;
+            }
+            case OP_INVOKE_16:{
+                ObjString* method = READ_STRING_16();
+                int argCount = READ_BYTE();
+                if(!invoke(method, argCount)){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
+            case OP_GET_PROPERTY_16: {
+                if (!IS_INSTANCE(peek(0))) {
+                    runtimeError("Only instances have properties.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjInstance *instance = AS_INSTANCE(peek(0));
+                ObjString *name = READ_STRING_16();
+
+                Value value;
+
+                if (tableGet(&instance->fields, name, &value)) {
+                    pop();
+                    push(value);
+                    break;
+                }
+                if (!bindMethod(instance->klass, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case OP_GET_SUPER_16:{
+                ObjString* name = READ_STRING_16();
+                ObjClass* superclass = AS_CLASS(pop());
+                if(!bindMethod(superclass, name)){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case OP_SUPER_INVOKE_16:{
+                ObjString* method = READ_STRING_16();
+                int argCount = READ_BYTE();
+                ObjClass* superclass = AS_CLASS(pop());
+                if(!invokeFromClass(superclass, method, argCount)){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
         }
     }
 #undef BINARY_OP
@@ -569,6 +745,8 @@ static InterpretResult run() {
 #undef READ_SHORT
 #undef READ_CONSTANT
 #undef READ_STRING
+#undef READ_CONSTANT_16
+#undef READ_STRING_16
 }
 
 InterpretResult interpret(const char *source) {
